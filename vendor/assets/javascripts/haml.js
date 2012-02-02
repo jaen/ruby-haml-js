@@ -39,9 +39,9 @@ var Haml;
             result.push(" " + key + '=\\"' + value + '\\"');
           } catch (e) {
             if(safe)
-              result.push(" " + key + '=\\"' + val + '\\"');
+              result.push(" " + key + '=\\"' + val.slice(1,-1) + '\\"'); //slice the quotes off
             else
-              result.push(" " + key + '=\\"" + '+escaperName+'(' + val + ') + "\\"');
+              result.push(" " + key + '=\\"" + '+escaperName+'(' + val.slice(1,-1) + ') + "\\"');
           }
         }
       }
