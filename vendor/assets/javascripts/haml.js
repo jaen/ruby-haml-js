@@ -23,18 +23,25 @@ var Haml;
         case '""':
           break;
         default:
+          var val = attribs[key],
+              safe;
+          if (safe = (val[0] === '!'))
+            val = val.slice(1);
           try {
-            value = JSON.parse("[" + attribs[key] +"]")[0];
+            value = JSON.parse("[" + val +"]")[0];
             if (value === true) {
               value = key;
             } else if (typeof value === 'string' && embedder.test(value)) {
-              value = '" +\n' + parse_interpol(html_escape(value)) + ' +\n"';
+              value = '" +\n' + parse_interpol(safe ? value : html_escape(value)) + ' +\n"';
             } else {
               value = html_escape(value);
             }
             result.push(" " + key + '=\\"' + value + '\\"');
           } catch (e) {
-            result.push(" " + key + '=\\"" + '+escaperName+'(' + attribs[key] + ') + "\\"');
+            if(safe)
+              result.push(" " + key + '=\\"' + val + '\\"');
+            else
+              result.push(" " + key + '=\\"" + '+escaperName+'(' + val + ') + "\\"');
           }
         }
       }
