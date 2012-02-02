@@ -34,7 +34,7 @@ var Haml;
             } else if (typeof value === 'string' && embedder.test(value)) {
               value = '" +\n' + parse_interpol(safe ? value : html_escape(value)) + ' +\n"';
             } else {
-              value = html_escape(value);
+              value = safe ? value : html_escape(value);
             }
             result.push(" " + key + '=\\"' + value + '\\"');
           } catch (e) {
