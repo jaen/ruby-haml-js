@@ -12,6 +12,14 @@ var Haml;
       replace(/\"/g, "&quot;");
   }
 
+  function quote_escape(text) {
+    return text.replace(/\"/g, "&quot;");
+  }
+
+  function simple_quote_escape(text) {
+    return text.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
+  }
+
   function render_attribs(attribs) {
     var key, value, result = [];
     for (key in attribs) {
@@ -26,22 +34,22 @@ var Haml;
           var val = attribs[key],
               safe;
           if (safe = (val[0] === '!'))
-            val = val.slice(1);
+            val = simple_quote_escape(val.slice(2,-1));
+          else
+            val = val.slice(1,-1);
           try {
-            value = JSON.parse("[" + val +"]")[0];
+            value = JSON.parse("[\"" + simple_quote_escape(val) +"\"]")[0];
             if (value === true) {
               value = key;
             } else if (typeof value === 'string' && embedder.test(value)) {
-              value = '" +\n' + parse_interpol(safe ? value : html_escape(value)) + ' +\n"';
+              value = '" +\n' + parse_interpol(safe ? quote_escape(value) : html_escape(value)) + ' +\n"';
             } else {
-              value = safe ? value : html_escape(value);
+              value = safe ? quote_escape(value): html_escape(value);
             }
             result.push(" " + key + '=\\"' + value + '\\"');
-          } catch (e) {
-            if(safe)
-              result.push(" " + key + '=\\"' + val.slice(1,-1) + '\\"'); //slice the quotes off
-            else
-              result.push(" " + key + '=\\"" + '+escaperName+'(' + val.slice(1,-1) + ') + "\\"');
+          }
+          catch (e) {
+            result.push(" " + key + '=\\"" + ' + escaperName + '(' + val + ') + "\\"');
           }
         }
       }
@@ -650,6 +658,7 @@ var Haml;
   Haml.render = render;
   Haml.execute = execute;
   Haml.html_escape = html_escape;
+  Haml.qr = quote_escape;
 }());
 
 // Hook into module system
