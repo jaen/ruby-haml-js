@@ -20,6 +20,10 @@ var Haml;
     return text.replace(/\\/g, "\\\\").replace(/"/g, "\\\"");
   }
 
+  function skip_false(what) {
+    return (what !== undefined && what !== null)? what : '';
+  }
+
   function render_attribs(attribs) {
     var key, value, result = [];
     for (key in attribs) {
@@ -169,10 +173,10 @@ var Haml;
       next = match[0].length;
       if (next < 0) { break; }
       if(match[1] === "#"){
-        items.push(escaperName+"("+(match[2] || match[3])+")");
+        items.push(escaperName+"(skip_false("+ (match[2] || match[3])+"))");
       }else{
         //unsafe!!!
-        items.push(match[2] || match[3]);
+        items.push("skip_false(" + (match[2] || match[3]) + ")");
       }
       
       pos += next;
@@ -510,9 +514,9 @@ var Haml;
 
           function escapedLine(){
             try {
-              return escaperName+'('+JSON.stringify(JSON.parse(line)) +')';
+              return escaperName+'(skip_false('+JSON.stringify(JSON.parse(line)) +'))';
             } catch (e2) {
-              return escaperName+'(' + line + ')';
+              return escaperName+'(skip_false(' + line + '))';
             }
           }
           
@@ -520,7 +524,7 @@ var Haml;
             try {
               return parse_interpol(JSON.parse(line));
             } catch (e) {
-              return line;
+              return 'skip_false(' + line + ')';
             }
           }
           
@@ -645,7 +649,7 @@ var Haml;
     "}"
 
     try{
-      var f = new Function("locals",  escaper + str );
+      var f = new Function("locals",  escaper + skip_false + str );
       return f;
     }catch(e){
       console.error(str);
