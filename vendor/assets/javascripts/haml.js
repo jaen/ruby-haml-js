@@ -1,6 +1,36 @@
 var Haml;
  
 (function () {
+  /*var ArrayProto = Array.prototype, ObjProto = Object.prototype, FuncProto = Function.prototype;
+  var slice            = ArrayProto.slice,
+      nativeForEach    = ArrayProto.forEach,,
+      nativeMap        = ArrayProto.map,
+      each = function(obj, iterator, context) {
+        if (obj == null) return;
+        if (nativeForEach && obj.forEach === nativeForEach) {
+          obj.forEach(iterator, context);
+        } else if (obj.length === +obj.length) {
+          for (var i = 0, l = obj.length; i < l; i++) {
+            if (iterator.call(context, obj[i], i, obj) === breaker) return;
+          }
+        } else {
+          for (var key in obj) {
+            if (_.has(obj, key)) {
+              if (iterator.call(context, obj[key], key, obj) === breaker) return;
+            }
+          }
+        }
+      },
+      map = function(obj, iterator, context) {
+        var results = [];
+        if (obj == null) return results;
+        if (nativeMap && obj.map === nativeMap) return obj.map(iterator, context);
+        each(obj, function(value, index, list) {
+          results[results.length] = iterator.call(context, value, index, list);
+        });
+        if (obj.length === +obj.length) results.length = obj.length;
+        return results;
+      }; */
 
   var matchers, self_close_tags, embedder, forceXML, escaperName, escapeHtmlByDefault;
 
@@ -27,7 +57,7 @@ var Haml;
   function render_attribs(attribs) {
     var key, value, result = [];
     for (key in attribs) {
-      if (key !== '_content' && attribs.hasOwnProperty(key)) {
+      if (key !== '_content' && key !== '_splats' && attribs.hasOwnProperty(key)) {
         switch (attribs[key]) {
         case 'undefined':
         case 'false':
@@ -63,12 +93,13 @@ var Haml;
 
   // Parse the attribute block using a state machine
   function parse_attribs(line) {
-    var attributes = {},
+    var attributes = { _splats: [] },
         l = line.length,
         i, c,
         count = 1,
         quote = false,
         skip = false,
+        splat = false,
         open, close, joiner, seperator,
         pair = {
           start: 1,
@@ -123,17 +154,24 @@ var Haml;
           if (c === '"' || c === "'") {
             quote = c;
           }
+          if (c === '*')
+              splat = true;
 
           if (count === 1) {
             if (c === joiner) {
               pair.middle = i;
             }
-            if (c === seperator || c === close) {
+            if (!splat && (c === seperator || c === close)) {
               pair.end = i;
               process_pair();
               if (c === seperator) {
                 pair.start = i + 1;
               }
+            }
+            if (splat && (c === seperator || c === ' ')) {
+                attributes._splats.push(line.substr(pair.start, i - pair.start).trim().substr(1));
+                splat = false;
+                pair.start = i+1;
             }
           }
 
@@ -264,6 +302,14 @@ var Haml;
           }
         }
 
+        var splat_code = '';
+        if (attribs._splats) {
+            var tmp = [],
+                splats = attribs._splats;
+            for(i=0;i<splats.length;i++)
+              tmp.push('render_splat(' + splats[i] + ')');
+            splat_code = '"+' + tmp.join('+') + '+"';
+        }
         attribs = render_attribs(attribs);
 
         content = this.render_contents();
@@ -282,13 +328,15 @@ var Haml;
             }            
           }
         }
-
+        
+        
+        
         if (forceXML ? content.length > 0 : self_close_tags.indexOf(tag) == -1) {
-          output = '"<' + tag + attribs + '>"' +
+          output = '"<' + tag + attribs + splat_code + '>"' +
             (content.length > 0 ? ' + \n' + content : "") +
             ' + \n"</' + tag + '>"';
         } else {
-          output = '"<' + tag + attribs + ' />"';
+          output = '"<' + tag + attribs + splat_code + ' />"';
         }
         
         if(whitespace.around){
@@ -647,9 +695,30 @@ var Haml;
     "    return \"\\n<pre class='error'>\" + "+escaperName+"(e.stack) + \"</pre>\\n\";\n" +
     "  }\n" +
     "}"
+    
+    function render_splat (attribs) {
+        var key, value, result = [];
+        for (key in attribs) {
+          if (attribs.hasOwnProperty(key)) {
+            switch (attribs[key]) {
+                case 'undefined':
+                case 'false':
+                case 'null':
+                case '""':
+                  break;
+                default:
+                  var value = attribs[key];
+                  if (value === true)
+                    value = key;
+                  result.push(" " + key + '=\\"' + value + '\\"');
+            }
+          }
+        }
+        return result.join("");            
+    }
 
     try{
-      var f = new Function("locals",  escaper + skip_false + str );
+      var f = new Function("locals",  escaper + skip_false + render_splat + str );
       return f;
     }catch(e){
       console.error(str);
@@ -669,3 +738,4 @@ var Haml;
 if (typeof module !== 'undefined') {
   module.exports = Haml;
 }
+;
