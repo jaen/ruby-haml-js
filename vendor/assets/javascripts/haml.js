@@ -23,6 +23,27 @@ var Haml;
     return (what !== undefined && what !== null)? what : '';
   }
 
+  function render_splat (attribs, escaper) {
+      var key, value, result = [];
+      for (key in attribs) {
+        if (attribs.hasOwnProperty(key)) {
+          switch (attribs[key]) {
+              case 'undefined':
+              case 'false':
+              case 'null':
+              case '""':
+                break;
+              default:
+                var value = attribs[key];
+                if (value === true)
+                  value = key;
+                result.push(" " + key + '="' + escaper(value) + '"');
+          }
+        }
+      }
+      return result.join("");            
+  }  
+
   function render_attribs(attribs) {
     var key, value, result = [];
     for (key in attribs) {
@@ -272,11 +293,11 @@ var Haml;
         }
 
         var splat_code = '';
-        if (attribs._splats) {
+        if (attribs._splats && attribs._splats.length) {
             var tmp = [],
                 splats = attribs._splats;
             for(i=0;i<splats.length;i++)
-              tmp.push('render_splat(' + splats[i] + ')');
+              tmp.push('render_splat(' + splats[i] + ',' + escaperName +')');
             splat_code = '"+' + tmp.join('+') + '+"';
         }
         attribs = render_attribs(attribs);
@@ -663,28 +684,7 @@ var Haml;
     "  } catch (e) {\n" +
     "    return \"\\n<pre class='error'>\" + "+escaperName+"(e.stack) + \"</pre>\\n\";\n" +
     "  }\n" +
-    "}"
-    
-    function render_splat (attribs) {
-        var key, value, result = [];
-        for (key in attribs) {
-          if (attribs.hasOwnProperty(key)) {
-            switch (attribs[key]) {
-                case 'undefined':
-                case 'false':
-                case 'null':
-                case '""':
-                  break;
-                default:
-                  var value = attribs[key];
-                  if (value === true)
-                    value = key;
-                  result.push(" " + key + '=\\"' + value + '\\"');
-            }
-          }
-        }
-        return result.join("");            
-    }
+    "}";
 
     try{
       var f = new Function("locals",  escaper + skip_false + render_splat + str );
